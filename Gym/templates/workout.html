@@ -45,7 +45,6 @@
             font-size: 34px;
             font-weight: 700;
             color: #b6ff00;
-            /* Today's Workout */
             text-transform: uppercase;
             letter-spacing: 1.5px;
             margin-bottom: 30px;
@@ -55,7 +54,6 @@
 
         .workout h1 span {
             color: #ffffff;
-            /* Biceps and Triceps */
         }
 
         /* Exercise Block */
@@ -224,6 +222,81 @@
             transform: scale(0.99);
         }
 
+        .save-workout:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* ========================================= */
+        /* FULL-SCREEN LOADER OVERLAY */
+        /* ========================================= */
+        #preloder-overlay {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 999999;
+            background: rgba(18, 18, 18, 0.94);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .loader-ring {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #252525;
+            border-top: 4px solid #b6ff00;
+            border-radius: 50%;
+            animation: spinRing 0.85s linear infinite;
+            margin-bottom: 20px;
+            box-shadow: 0 0 15px rgba(182, 255, 0, 0.25);
+        }
+
+        .loader-text {
+            font-family: "Oswald", sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .loader-text span {
+            color: #b6ff00;
+        }
+
+        .loader-bar-wrapper {
+            width: 160px;
+            height: 3px;
+            background: #252525;
+            overflow: hidden;
+            border-radius: 2px;
+        }
+
+        .loader-bar-fill {
+            width: 100%;
+            height: 100%;
+            background: #b6ff00;
+            animation: fillBar 1.2s ease-in-out infinite;
+            transform-origin: left;
+        }
+
+        @keyframes spinRing {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes fillBar {
+            0% { transform: translateX(-100%); }
+            50% { transform: translateX(0%); }
+            100% { transform: translateX(100%); }
+        }
+
         /* Responsive */
         @media (max-width: 767px) {
             .workout {
@@ -252,6 +325,16 @@
 </head>
 
 <body>
+    <!-- Fullscreen Loading Overlay Begin -->
+    <div id="preloder-overlay">
+        <div class="loader-ring"></div>
+        <div class="loader-text">Saving <span>Workout...</span></div>
+        <div class="loader-bar-wrapper">
+            <div class="loader-bar-fill"></div>
+        </div>
+    </div>
+    <!-- Fullscreen Loading Overlay End -->
+
     <!-- Workout Form Section Begin -->
     <div class="workout">
         <h1>Hello <span>{{ User.username }},</span><br>Let's Start Today's Workout,<br> <span>{{ Muscle_group }}</span>
@@ -323,8 +406,30 @@
     <script>
         const exercisesContainer = document.getElementById("exercisesContainer");
         const workoutForm = document.getElementById("workoutForm");
+        const loaderOverlay = document.getElementById("preloder-overlay");
+        const saveWorkoutBtn = workoutForm.querySelector(".save-workout");
 
         const MAX_SETS = 2; // 2 sets limit
+
+        function showLoader() {
+            if (loaderOverlay) {
+                loaderOverlay.style.display = "flex";
+            }
+            if (saveWorkoutBtn) {
+                saveWorkoutBtn.disabled = true;
+                saveWorkoutBtn.innerText = "Saving Workout...";
+            }
+        }
+
+        function hideLoader() {
+            if (loaderOverlay) {
+                loaderOverlay.style.display = "none";
+            }
+            if (saveWorkoutBtn) {
+                saveWorkoutBtn.disabled = false;
+                saveWorkoutBtn.innerText = "Save Workout";
+            }
+        }
 
         // Calculate total available exercises from the initial dropdown options (excluding empty placeholder)
         function getTotalAvailableExercises() {
@@ -385,13 +490,12 @@
                 .map(s => s.value)
                 .filter(val => val !== "");
 
-            // Disable options that are selected elsewhere
             selects.forEach(select => {
                 const currentVal = select.value;
                 const options = select.querySelectorAll("option");
 
                 options.forEach(option => {
-                    if (!option.value) return; // Skip placeholder
+                    if (!option.value) return;
 
                     if (selectedValues.includes(option.value) && option.value !== currentVal) {
                         option.disabled = true;
@@ -401,7 +505,6 @@
                 });
             });
 
-            // Hide or show "New Exercise" buttons if all options are consumed
             const totalExercises = getTotalAvailableExercises();
             const exerciseButtons = document.querySelectorAll(".new-exercise");
 
@@ -458,7 +561,6 @@
             return true;
         }
 
-        // Recalculate options & button states when any dropdown changes
         exercisesContainer.addEventListener("change", function (event) {
             if (event.target.classList.contains("exercise-select")) {
                 updateExerciseOptions();
@@ -535,7 +637,6 @@
                 `;
                 exercisesContainer.appendChild(newExercise);
 
-                // Refresh disabled options and sync button visibility
                 updateExerciseOptions();
 
                 newExercise.scrollIntoView({
@@ -566,11 +667,15 @@
 
             const exercises = exercisesContainer.querySelectorAll(".exercise");
 
+            // Validate before triggering loader
             for (let exercise of exercises) {
                 if (!validateExercise(exercise)) {
                     return;
                 }
             }
+
+            // Start loader animation
+            showLoader();
 
             const workoutData = [];
 
@@ -612,9 +717,14 @@
                     isWorkoutSaved = true;
                     isLeavingWithPermission = true;
                     window.location.href = "/404/";
+                } else {
+                    hideLoader();
+                    alert(result.message || "Something went wrong while saving your workout.");
                 }
             } catch (error) {
                 console.error("Error submitting workout:", error);
+                hideLoader();
+                alert("Network error. Please check your connection and try again.");
             }
         });
 

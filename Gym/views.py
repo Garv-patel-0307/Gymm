@@ -10,6 +10,7 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.core.mail import send_mail
 from django.conf import settings
+from .backup_utils import backup_database_to_github
 
 Biceps_Exercises = ["preacher curl", "seated bicep curls", "Rope hammer curl"]
 Triceps_Exercises = ["Over-head tricep extension", "Single arm rope pull-down", "Road/Rope pull-down"]
@@ -59,6 +60,7 @@ def signup(request):
             img = image
         )
         user.save()
+        backup_database_to_github()
         request.session['user_id'] = user.id
         return redirect("/index/")
     return render(request, "signup.html")
@@ -244,6 +246,8 @@ def workout(request):
                     set_2 = set_2_value
                 )
                 workout.save()
+
+        backup_database_to_github()
 
         models_list_Biceps = [Biceps, Triceps, Forearms]
         models_list_Back = [Back, Leg]
